@@ -1,0 +1,103 @@
+#include <Servo.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// LCD setup
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// Pin Definitions
+const int tempPin = A1;
+const int lightPin = A0;
+const int pirPin = 2;
+const int ledLightPin = 8;
+const int ledMotionPin = 3;
+const int servoPin = 9;
+const int buzzerPin = 10;
+const int powerPin = 7; // Pin to check if power is on
+
+Servo myServo;
+
+void setup() {
+    pinMode(powerPin, INPUT);
+    pinMode(lightPin, INPUT);
+    pinMode(pirPin, INPUT);
+    pinMode(ledLightPin, OUTPUT);
+    pinMode(ledMotionPin, OUTPUT);
+    pinMode(buzzerPin, OUTPUT);
+
+    myServo.attach(servoPin);
+    myServo.write(0);
+    
+    lcd.init();
+    lcd.backlight();
+    
+    Serial.begin(9600);
+}
+
+void loop() {
+    // Check if power supply is on
+    if (digitalRead(powerPin) == HIGH) {
+        // Read Temperature
+        int tempValue = analogRead(tempPin);
+        float voltage = tempValue * (5.0 / 1023.0);
+        float temperatureC = (voltage - 0.5) * 100.0;
+        
+        // Read Light Sensor
+        int lightValue = analogRead(lightPin);
+
+        // Read PIR Sensor
+        int motionDetected = digitalRead(pirPin);
+
+        // Control Servo based on Temperature
+        if (temperatureC > 25.0) {
+            myServo.write(90);
+        } else {
+            myServo.write(0);
+        }
+
+        // Control LED based on Light Sensor
+        digitalWrite(ledLightPin, lightValue < 500 ? HIGH : LOW);
+
+        // Control Motion LED and Buzzer
+        if (motionDetected == HIGH) {
+            digitalWrite(ledMotionPin, HIGH);
+            digitalWrite(buzzerPin, HIGH);
+            delay(5000);
+            digitalWrite(buzzerPin, LOW);
+        } else {
+            digitalWrite(ledMotionPin, LOW);
+        }
+
+        // Debugging Output
+        Serial.print("Temperature: ");
+        Serial.print(temperatureC);
+        Serial.print(" °C, Light: ");
+        Serial.print(lightValue);
+        Serial.print(", Motion: ");
+        Serial.println(motionDetected);
+        
+        // Display on LCD
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Temp: ");
+        lcd.print(temperatureC);
+        lcd.print(" C");
+
+        lcd.setCursor(0, 1);
+        lcd.print("Light: ");
+        lcd.print(lightValue);
+        delay(500);
+
+        lcd.clear();
+        lcd.setCursor(0, 1);
+        lcd.print("Motion: ");
+        lcd.print(motionDetected ? "Yes" : "No");
+        delay(500);
+    } else {
+        // Display power off message on LCD
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Power Off");
+        delay(1000);
+    }
+}
